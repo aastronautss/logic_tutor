@@ -21,12 +21,20 @@ class MolecularSentence
 
 	def to_s
 		start = @main_connective.to_s
-		finish = ""
 
 		start.slice!(0)
 		start.slice!(-1) # Remove open and close parens
+	end
 
-		start.split(/\)(AND|OR|IMPLIES|IFF)\(/) # The main connective, if it is a binary connective, will always look like this.
+	def to_s_custom(options = { "NOT"			=> "~",
+															"AND"			=> "&",
+															"OR"			=> "v",
+															"IMPLIES"	=> "->",
+															"IFF"			=> "<->"})
+		str = self.to_s
+		options.each do |k, v|
+			str.gsub!(k, v)
+		end
 	end
 end
 
