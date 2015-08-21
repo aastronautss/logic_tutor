@@ -1,13 +1,14 @@
-# MolecularSentence is a wrapper class for a tree of SentenceNodes with the main connective of the sentence as the root. This provides various utilities for 
-class MolecularSentence
+# LogicFormula is a wrapper class for a tree of SentenceNodes with the main connective of the sentence as the root. This provides various utilities for
+class LogicFormula
 	# #initialize takes a string in the form of a formula in sentential logic and stores its components as nodes in our tree.
 	def initialize(str, symbols = { 'NOT'  		=> 'NOT',
 																	'AND'  		=> 'AND',
 																	'OR'			=> 'OR',
 																	'IMPLIES'	=> 'IMPLIES',
 																	'IFF'			=> 'IFF' })
-		str.gsub!(/\s+/, '')
-		symbols.each { |key, value| str.gsub!(value, key) }
+		str.gsub!(/\s+/, '') # Remove all whitespace to populate tree
+		symbols.each { |key, value| str.gsub!(value, key) }	# Standardize symbols
+
 		@main_connective = populate_tree(str)
 	end
 
@@ -30,7 +31,7 @@ class MolecularSentence
 		str.gsub!(/OR/, ' OR ')
 		str.gsub!(/IMPLIES/, ' IMPLIES ')
 		str.gsub!(/IFF/, ' IFF ')
-		str.gsub!(/NOT/, 'NOT ')
+		# str.gsub!(/NOT/, 'NOT ')
 		str.gsub!(/\((\w+)\)/, '\1')
 		str.gsub!(/NOT \(/, 'NOT(')
 		str
@@ -43,7 +44,12 @@ class MolecularSentence
 															'IFF'			=> '<->' })
 		str = to_s
 		options.each { |key, value| str.gsub!(key, value) }
+		yield(str) if block_given?
 		str
+	end
+
+	def main_connective
+		@main_connective.value
 	end
 
 	private
@@ -58,11 +64,18 @@ class MolecularSentence
 		arr = [nil, '', nil] # Initializes return variable (as a leaf node)
 		indices = next_sub(str, 0) # Take the indices of the next outer set of parentheses. "NOT((A)OR(B))" would return [3, 12]
 
-		if indices.nil? # #next_sub will return nil if it doesn't find a subexpression
-			arr[1] = str	# So we add the value to the array and call it a day.
-		elsif str[0..2] == 'NOT' # If the first thing outside of the parentheses is NOT we only need to run next_sub once.
+		if str[0..2] == 'NOT' # If the first thing outside of the parentheses is NOT, it could mean that it is either the main connective, or the left flank is in the form of NOT(EXPR).
+			if true
+				if str[3] == '(' # We want to account for the times when NOT is written without enclosing its immediate subexpression in parentheses (e.g. its immediate subexpression is an atomic sentence, like 'NOT A')
+					arr[2] = str[indices[0]..indices[1]] # If we find parentheses, then we go with the normal plan with calling next_sub
+				else
+					arr[2] = str[3...str.length] # This covers cases like 'NOT A' and 'NOT NOT A'
+				end
+			else
+			end
 			arr[1] = 'NOT'
-			arr[2] = str[indices[0]..indices[1]]
+		elsif indices.nil? # #next_sub will return nil if it doesn't find a subexpression
+			arr[1] = str	# So we add the value to the array and call it a day.
 		else
 			arr[0] = str[indices[0]..indices[1]]
 			letters = [] # Here we find the connective between the two subexpressions.
@@ -78,7 +91,7 @@ class MolecularSentence
 		arr
 	end
 
-	# #next_sub is a helper method for #subexpressions. Finds the next subexpression in a propositional expression starting at the given indices.
+	# #next_sub is a helper method for #subexpressions. Finds the next subexpression in a LogicFormula expression starting at the given indices.
 	def next_sub(str, start = 1)
 		until str[start] == '(' || start == str.length
 			start += 1
@@ -149,6 +162,7 @@ class MolecularSentence
 				else
 					true
 			end
+			true
 		end
 
 		# #string_helper is a helper class for MolecularSentence to make the recursion easier to do. A sentence like ~Av~B winds up like ((NOT(A))OR(NOT(B))). MolecularSentence#to_s will make it look better.
@@ -173,7 +187,7 @@ class Interpretation
 	end
 end
 
-# Related to Interpretation, Tanslation assigns English statements (values in @assignments) to the atomic symbols (keys in @assignments).
+# Related to Interpretation, Translation assigns English statements (values in @assignments) to the atomic symbols (keys in @assignments).
 class Translation
 	attr_accessor :assignments
 
@@ -182,8 +196,22 @@ class Translation
 	end
 end
 
-s = MolecularSentence.new('((NOT((A)OR(B)))OR(NOT(C)))')
+s = LogicFormula.new('((NOT((A)OR(B)))OR(NOT(C)))')
 puts s.to_s
 puts s.to_s_custom
 puts "Well-formed formula: " + s.is_wff?.to_s
 puts "Evaluates to: " + s.evaluate.to_s
+
+t = LogicFormula.new('NOT A')
+puts t.to_s
+puts t.to_s_custom
+puts t.main_connective
+puts t.is_wff?
+puts t.evaluate
+
+u = LogicFormula.new('NOT NOT A')
+puts u.to_s
+puts u.to_s_custom
+puts u.main_connective
+puts u.is_wff?
+puts u.evaluate
